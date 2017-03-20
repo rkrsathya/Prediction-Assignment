@@ -1,0 +1,87 @@
+---
+title: "Predictive Machine Learning"
+author: "Sathyanarayanan Kuppusami"
+date: "20 March 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Goal
+
+The goal of the project is to predict the manner in which techs did their exercise. The data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants are used for our prediction. The "classe" variable in the training set is output variable. I may use any of the other variables to predict with. I should create a report describing the model, using cross validation, expected out of sample error is, and why I made the choices I did. I will also use  prediction model to predict 20 different test cases. 
+
+```{r}
+library(caret)
+library(lubridate) # For year() function below
+library(forecast)
+library(rpart)
+library(dplyr)
+library(e1071)
+```
+
+## Data Exploration
+
+Read the csv file from the data source.The dataset has 160 features, we are analyzing the importnt features related to outcome and remove the other variables from our training and test set.
+
+```{r message=FALSE}
+training = read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+trainset <- training[,sapply(training, function(v) var(v, na.rm=TRUE)!=0)]
+
+trainset[trainset == ""] <- NA
+trainset <- trainset[, colSums(is.na(trainset)) ==0]
+
+trainset <- trainset[,c(8:60)]
+testset <- testing[,names(testing)%in%names(trainset)]
+```
+
+From the above analysis we removed first 7 user and time related columns from the dataframe and columns with "NA".So finally we have 53 features as predictor variables and column "classe" as outcome variable.
+
+## Building a model
+
+Creating a datapartion of 70% as training and 30% as test set. we use k fold crossvalidation for our training. I planned to use svm to build my model for better prediction.
+
+```{r}
+
+set.seed(2)
+
+
+splittrain <- createDataPartition(trainset$classe, p=0.70, list=F)
+train_data <- trainset[splittrain, ]
+test_data <- trainset[-splittrain, ]
+train_control <- trainControl(method="cv", number=3)
+svmfits <- svm(classe~.,data = train_data,cross=3)
+
+```
+
+since the observations are large, it took quiet a while for training.
+
+## Evaluating the model
+
+The model is tested with test data. Confusion matrix is generated from the prediction. We could reach 94% accuracy, but still with other model it could prove better. Also cross validation does not seem to improve th accuracy a large. The right parameter estimation of svm can improve the prediction.
+
+```{r}
+
+predfit <- predict(svmfits,test_data)
+
+confusionMatrix(predfit,test_data$classe)
+
+
+```
+
+## Test the model with 20 test cases
+
+Testing the trained model with 20 test cases, proves to be efficient, though we predicted 2 cases wrong.
+
+```{r}
+
+testfit <- predict(svmfits,testset)
+testfit
+
+```
+
+
+
